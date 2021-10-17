@@ -3,5 +3,41 @@
 *::after
     box-sizing: border-box
 
+#calculator
+    height: 80vh
+    width: 60vh
+    margin: auto
+    border: 1px solid black
+
+#screen
+    position: relative
+    border-bottom: 1px solid black
+
+#result-display
+    position: absolute
+    right: 0
+    bottom: 0
+    margin-right: 5%
+    font-size: 3rem
+
+#controls
+    margin: 0
+    padding: 0
+
+#controls 
+    div, button
+        border-right: 1px solid black
+        border-bottom: 1px solid black
+
+#controls 
+    div:nth-child(4n), div:nth-child(19)
+        border-right: none
+
+#controls 
+    div:nth-child(n + 17)
+        border-bottom: none
+
 
     
+
+
