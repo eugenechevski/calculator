@@ -1,3 +1,34 @@
+/**
+ * 
+ *  Algorithm
+ * 
+ *  1. Create a string variable to store a display result
+ *  
+ * 
+ *  2. Read the user's input
+ * 
+ *     There are two types of inputs: 
+ *          1. Operands(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, '.');
+ *          2. Operators(/, *, +, -, =, C, +/-, %);
+ * 
+ *     If the type of an input is operand:
+ *          if (input is '.' and display result's last character is '.') or (input is '0' and display result is '0') :
+ *              return
+ *          else:
+ *              if display result is '0':
+ *                  display result = ''
+ *              display result += input
+ *  
+ *     ...
+ *  
+ * 
+ * 
+ *      
+ *  
+ * 
+ */
+
+
 const controlsContent = [
     ['C', '+/-', '%', '/'],
     ['7', '8', '9', '*'],
@@ -6,8 +37,8 @@ const controlsContent = [
     ['0', '.', '=']
 ]
 const controlsContainer = document.getElementById('controls');
+const themeSwitches = document.getElementsByClassName('theme-switch');
 var controlElements = [document.getElementById('screen')];
-
 
 
 // Draw the calculator
@@ -63,9 +94,6 @@ for (let i = 0; i < controlsContent.length; i++) {
         // Set the text content
         control.textContent = controlsContent[i][j];
 
-        // # DEBUG
-        console.log(control);
-
         // Store the element for further use
         controlElements.push(control);
 
@@ -74,12 +102,20 @@ for (let i = 0; i < controlsContent.length; i++) {
     }
 }
 
+// Add the event listener for the theme switches
+for (let i = 0; i < themeSwitches.length; i++) {
+    themeSwitches[i].addEventListener('click', () => {
+        setTheme(themeSwitches[i].id);
+    });
+}
 
 // Helper for setting a theme
 function setTheme(themeName) {
     controlElements.forEach(control => {
-        // Remove the last theme-2
-        control.className.replace('theme-\d+', themeName);
+        // Replace the current theme with the new one
+        let pattern = /theme-\d+/;
+        let newClass = control.className.replace(pattern, themeName);
+        control.className = newClass;
     });
 }
 
