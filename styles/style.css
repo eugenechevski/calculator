@@ -21,10 +21,13 @@
 
 #result-display {
   position: absolute;
-  right: 0;
   bottom: 0;
-  margin-right: 5%;
-  font-size: 3rem;
+  right: 0;
+  margin-right: 2%;
+  width: -webkit-fit-content;
+  width: -moz-fit-content;
+  width: fit-content;
+  font-size: 2rem;
 }
 
 #controls {
@@ -56,15 +59,15 @@
   color: #FFFFFF;
 }
 
-#operators-1.theme-1, #theme-1 div:nth-child(2) {
+.modificator.theme-1, #theme-1 div:nth-child(2) {
   background-color: #4E4E4E;
 }
 
-#operators-2.theme-1, #theme-1 div:nth-child(3) {
+.operator.theme-1, #theme-1 div:nth-child(3) {
   background-color: #FF9500;
 }
 
-#digits.theme-1, #theme-1 div:nth-child(4) {
+.digit.theme-1, #theme-1 div:nth-child(4) {
   background-color: #D4D4D2;
 }
 
@@ -74,16 +77,16 @@
   color: #FFFFFF;
 }
 
-#operators-1.theme-2, #theme-2 div:nth-child(2) {
+.modificator.theme-2, #theme-2 div:nth-child(2) {
   background-color: #3A2B36;
   color: #FFFFFF;
 }
 
-#operators-2.theme-2, #theme-2 div:nth-child(3) {
+.operator.theme-2, #theme-2 div:nth-child(3) {
   background-color: #FFFFFF;
 }
 
-#digits.theme-2, #theme-2 div:nth-child(4) {
+.digit.theme-2, #theme-2 div:nth-child(4) {
   background-color: #FFDE79;
 }
 
@@ -97,15 +100,15 @@
   color: #000000;
 }
 
-#operators-1.theme-3, #theme-3 div:nth-child(2) {
+.modificator.theme-3, #theme-3 div:nth-child(2) {
   background-color: #D9043D;
 }
 
-#operators-2.theme-3, #theme-3 div:nth-child(3) {
+.operator.theme-3, #theme-3 div:nth-child(3) {
   background-color: #F23568;
 }
 
-#digits.theme-3, #theme-3 div:nth-child(4) {
+.digit.theme-3, #theme-3 div:nth-child(4) {
   background-color: #A63352;
 }
 
