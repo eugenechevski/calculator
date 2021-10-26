@@ -17,9 +17,12 @@ const controlsContent = [
 var controlElements = {
     'screen':  document.getElementById('screen'),
 };
+
 var displayResult = '';
 var displayFontSize = 2;
 var canOperate = true;
+var invalidOperation = false;
+var inputHistory = [];
 
 
 // Draw the calculator
@@ -99,8 +102,6 @@ controlElements['0'].focus();
 let altIsPressed = false;
 controlsContainer.addEventListener('keydown', (e) => {
     let keyValue = e.key.toUpperCase();
-
-    console.log(keyValue);
 
     // Check for the key modifiers being pressed
 
@@ -198,12 +199,17 @@ function operand(inputValue) {
 
 // Helper to modify the result
 function modify(operation) {
+    // Check if can modify the result if the result is '0', 
+    // then we don't have to perform any modifications
+    // or we trying to modify the 'Not a number' display string
+    if (displayResult === '0' || (displayResult === 'Not a number' && operation != 'C')) {
+        return;
+    }
+
     switch (operation) {
         case 'Remove':
             // Can remove no more characters
-            if (displayResult === '0') {
-                // Pass
-            } else if (displayResult.length === 1) {
+            if (displayResult.length === 1) {
                 displayResult = '0';
             } else {
                 displayResult = displayResult.slice(0, -1);
@@ -211,25 +217,50 @@ function modify(operation) {
 
             break;
         case 'C':
-            // Handle the case
+            // Reset the display and
+            // clear the input history
+            displayResult = '0';
+            inputHistory.splice(0, inputHistory.length);
+            
             break;
         case '+/-':
-            // Handle the case
+            // Reflect the display by multiplying by -1
+            displayResult *= -1;
             break;
         case '%':
-            // Handle the case
+            // Convert to percentages by dividing by 100
+            
+            // First check if the division doesn't cause to exceed the limit 
+            if (displayResult / 100 <= 1 * (10 ** (-95))) {
+                invalidOperation = true;
+                canOperate = false;
+            } else {
+                displayResult /= 100
+            }
             break;
     }
 }
 
 // Helper to operate on the result
 function operate(operation) {
-    
+    // TODO
+
+    if (canOperate){
+
+        if (invalidOperation) {
+            invalidOperation = false;
+        }
+
+    } else {
+        inputHistory.push(operation);
+    }
+
+
 }
 
 // Helper which performs the calculation
 function calculate(input) {
-
+    // TODO
 }
 
 // Helper which updates the display
@@ -241,6 +272,8 @@ function updateDisplay() {
     // was reached, if yes reset the display and ...
     if (displayResult.length === 50) {
         displayResult = '0';
+    } else if(invalidOperation && !canOperate) {
+        displayResult = 'Not a number';
     }
 
     // Check if we need to reset the standdart font size
