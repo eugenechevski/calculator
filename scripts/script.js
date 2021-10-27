@@ -21,7 +21,6 @@ var controlElements = {
 var displayResult = '';
 var displayFontSize = 2;
 var canOperate = true;
-var invalidOperation = false;
 var inputHistory = [];
 
 
@@ -94,13 +93,10 @@ for (let i = 0; i < controlsContent.length; i++) {
     }
 }
 
-// Get ready to listen for events
-controlElements['0'].focus();
-
 // Add the keyboard-event listener
 
 let altIsPressed = false;
-controlsContainer.addEventListener('keydown', (e) => {
+document.body.addEventListener('keydown', (e) => {
     let keyValue = e.key.toUpperCase();
 
     // Check for the key modifiers being pressed
@@ -143,7 +139,7 @@ controlsContainer.addEventListener('keydown', (e) => {
 
 // Add the key-event listener to reset the state of the flag 
 // when the key-modifier 'Alt(Windows) or Option(Mac)' is being released
-controlsContainer.addEventListener('keyup', (e) => {
+document.body.addEventListener('keyup', (e) => {
     if (e.key.toUpperCase() === 'ALT') {
         altIsPressed = false;
     }
@@ -232,8 +228,7 @@ function modify(operation) {
             
             // First check if the division doesn't cause to exceed the limit 
             if (displayResult / 100 <= 1 * (10 ** (-95))) {
-                invalidOperation = true;
-                canOperate = false;
+                displayResult = 'Not a number';
             } else {
                 displayResult /= 100
             }
@@ -243,24 +238,79 @@ function modify(operation) {
 
 // Helper to operate on the result
 function operate(operation) {
-    // TODO
+    if (displayResult === 'Not a number') { 
+        return; 
+    } else if (operation === '=') {
+        if (inputHistory.slice(1) === ['/', '0']){
+            displayResult = 'Not a number';
+        } else if (inputHistory.length === 0) {
+            return;
+        } else if (inputHistory.length === 2) {
+            inputHistory.push(displayResult);
+            displayResult = calculate(inputHistory);
 
-    if (canOperate){
-
-        if (invalidOperation) {
-            invalidOperation = false;
+            if (displayResult != 'Not a number') {
+                inputHistory.pop();
+            }
+        } else {
+            displayResult = calculate(inputHistory);
+            if (displayResult != 'Not a number') {
+                inputHistory[0] = displayResult;
+            }
+        }
+    } else if (canOperate) {
+        if (inputHistory.length === 3) {
+            inputHistory.splice(0, 3);
         }
 
+        inputHistory.push(displayResult);
+
+        if (inputHistory.length === 3) {
+            displayResult = calculate(inputHistory);
+        }
+
+        if (displayResult != 'Not a number') {
+            inputHistory.splice(0, 3);
+            inputHistory.push(displayResult);
+            inputHistory.push(operation);
+        }
+
+        canStore = false;
     } else {
+        inputHistory.pop();
         inputHistory.push(operation);
     }
-
 
 }
 
 // Helper which performs the calculation
 function calculate(input) {
-    // TODO
+    let result = '';
+
+    if (input.splice(1) === ['/', '0']){
+        result = 'Not a number';
+    } else {
+        let a = inputHistory[0];
+        let operation = inputHistory[1];
+        let b = inputHistory[2];
+        
+        switch(operation) {
+            case '/':
+                // TODO
+                break;
+            case '*':
+                // TODO
+                break;
+            case '+':
+                // TODO
+                break;
+            case '-':
+                // TODO
+                break;
+        }
+    }
+
+    return result;
 }
 
 // Helper which updates the display
@@ -272,9 +322,7 @@ function updateDisplay() {
     // was reached, if yes reset the display and ...
     if (displayResult.length === 50) {
         displayResult = '0';
-    } else if(invalidOperation && !canOperate) {
-        displayResult = 'Not a number';
-    }
+    } 
 
     // Check if we need to reset the standdart font size
     // when the number of characters is less than 16 again
