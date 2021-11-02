@@ -7,7 +7,7 @@ const themeSwitches = document.getElementsByClassName('theme-switch');
 // Variables and constants
 
 const controlsContent = [
-    ['C', '+/-', '%', '/'],
+    ['AC', '+/-', '%', '/'],
     ['7', '8', '9', '*'],
     ['4', '5', '6', '+'],
     ['1', '2', '3', '-'],
@@ -18,11 +18,11 @@ var controlElements = {
     'screen':  document.getElementById('screen'),
 };
 
-var displayResult = '';
-var displayFontSize = 2;
-var canOperate = true;
+var displayResult = '0';
+var operationMode = false;
 var inputHistory = [];
 
+let regex = /\d+\.?\d*/g;
 
 // Draw the calculator
 for (let i = 0; i < controlsContent.length; i++) {
@@ -115,8 +115,14 @@ document.body.addEventListener('keydown', (e) => {
 
     if (keyValue === 'ENTER') {
         keyValue = '=';
-    } else if (keyValue === 'ESCAPE') {
-        keyValue = 'C';
+    } else if (keyValue === 'ESCAPE' || keyValue === 'C') {
+        // User wants to undo the current operation
+        if (operationMode) {
+            operationMode = false;
+            return;
+        } 
+        // User wants to clear the display
+        keyValue = 'AC';
     // A hidden control which doesn't have an associated button
     // and has to be invoked manually
     } else if (keyValue === 'BACKSPACE') {
@@ -156,11 +162,11 @@ for (let i = 0; i < themeSwitches.length; i++) {
 function handleInput(controlTypeName, controlName) {
      // Check the input type
 
-     if (controlTypeName === 'digit') {
+     if (controlTypeName == 'digit') {
         operand(controlName);
-    } else if (controlTypeName === 'modificator') {
+    } else if (controlTypeName == 'modificator') {
         modify(controlName);
-    } else if (controlTypeName === 'operator') {
+    } else if (controlTypeName == 'operator') {
         operate(controlName);
     } else {
         // Error
@@ -171,20 +177,20 @@ function handleInput(controlTypeName, controlName) {
 
 // Helper to read the input from 'digit' controls
 function operand(inputValue) {
-    // Check if the input is being made after an operation
-    if (canOperate === false) {
+    // Reset the variables for the new input
+    if (operationMode || !isDigit(displayResult)) {
         displayResult = '0';
-        canOperate = true;
+        operationMode = false;
     }
 
     // Check for attempting to input more than one '.' in a row
     // Also check for attempting to input more than one leading zero
-    if (inputValue === '.' && displayResult.slice(-1) === '.' ||
-        inputValue === '0' && displayResult === '0') {
+    if (inputValue == '.' && displayResult.slice(-1) == '.' ||
+        inputValue == '0' && displayResult == '0') {
             return;
     } else {
         // Check if the input is the first digit
-        if (displayResult === '0') {
+        if (displayResult == '0' && inputValue != '.') {
             displayResult = '';
         }
 
@@ -192,7 +198,7 @@ function operand(inputValue) {
         displayResult += inputValue;
 
         if (displayResult >= Number.MAX_SAFE_INTEGER) {
-            displayResult = '0';
+            displayResult = 'Sorry, your number is out of boundaries :(';
         }
     }
 }
@@ -202,7 +208,7 @@ function modify(operation) {
     // Check if can modify the result if the result is '0', 
     // then we don't have to perform any modifications
     // or we're trying to modify non-digit string
-    if (displayResult === '0' || (displayResult.match(/\d+/) === null && operation != 'C')) {
+    if (displayResult == '0' || (!isDigit(displayResult) && operation != 'AC')) {
         return;
     }
 
@@ -210,31 +216,28 @@ function modify(operation) {
         // Remove the last number
         case 'Remove':
             // Can remove no more characters
-            if (displayResult.length === 1) {
+            if (displayResult.length == 1) {
                 displayResult = '0';
             } else {
                 displayResult = displayResult.slice(0, -1);
             }
 
             break;
-            // Reset the display and
-        case 'C':
-            // clear the input history
+        // Reset the display and
+        case 'AC':
+            // clear everything
             displayResult = '0';
-            controlElements['C'].textContent = 'AC';
             inputHistory.splice(0, inputHistory.length);
-            
             break;
-            // Reflect the display by multiplying by -1
+        // Reflect the display by multiplying by -1
         case '+/-':
             displayResult *= -1;
             break;
-            // Convert to percentages by dividing by 100
+        // Convert to percentages by dividing by 100
         case '%':
-            
             // First check if the division doesn't cause to exceed the limit 
             if (displayResult / 100 <= 1 * (10 ** (-95))) {
-                displayResult = 'Not a number';
+                displayResult = NaN;
             } else {
                 displayResult /= 100
             }
@@ -244,167 +247,120 @@ function modify(operation) {
 
 // Handle an arithmetic operation('/', '*', '+', '-', '=')
 function operate(operation) {
-    // We can't operate on not a digit
-    if (displayResult.match(/\d+/) === null) { 
-        return; 
-    // Special condition when the user invoke the '=' operator, which 
-    // requires the special handling
-    } else if (operation === '=') {
-        // Ensure the user isn't trying to push a number after division by zero
-        if (inputHistory.slice(1) === ['/', '0']){
-            displayResult = 'Not a number';
-        // The user tries to calculate the number on itself
-        } else if (inputHistory.length === 0) {
-            return;
-        // A special case when the user inputted an operator after an operand
-        // and then invoked the '=' operator, in this case we're simply using
-        // the first operand as the second operand: operand1 -> operator -> '=' -> operand1 operator operand1.
-        // After that we're removing the result from the input history array, in the case if the user decides
-        // to invoke the '=' operator again, then we can use the first operand to calculate the new result based 
-        // on the previous result: operand1 -> operator -> '=' -> calculate([operand1 operator operand1]) ->
-        // '=' -> calculate([operand1 operator (operand1 operator operand1)]).
-        } else if (inputHistory.length === 2 && !canOperate) {
-            inputHistory.push(displayResult);
-            displayResult = calculate(inputHistory);
+    if (!isDigit(displayResult)) {
+        return;
+    }
 
-            if (displayResult.match(/\d+/) != null) {
-                inputHistory.pop();
-            }
-        // The most common case when the user has inputted operand1 -> operator -> operand2
-        // and invoked the '=' operator to get the result.
+    if (operation == '=') {
+        if (inputHistory.length == 0) { 
+            return; 
         } else {
-            // The first time the user has invoked the '=' operator
-            if (inputHistory.length === 2) {
-                inputHistory.push(displayResult);
-            }
-
-            displayResult = calculate(inputHistory);
-            if (displayResult.match(/\d+/) != null) {
-                // Here we're substituting the first operand with the the result 
-                // just in case if the user decides to invoke the '=' operator again
-                // in that case we'll be simply calculating the result with the same
-                // second operand.
-                inputHistory[0] = displayResult;
-            }
-        }
-    // One of the operators('/', '*', '+', '-') was invoked after an input of an operand
-    } else if (canOperate) {
-        // In the case when the user is invoking an operation after the '=' operation
-        // or the user divided by zero, we need to clean the input history array
-        if (inputHistory.length === 3) {
-            inputHistory.splice(0, 3);
-        }
-
-        // Add the new inputted operand
-        inputHistory.push(displayResult);
-
-        // See if we're ready to calculate the result
-        if (inputHistory.length === 3) {
-            displayResult = calculate(inputHistory);
-
-            // If the calculation is successful clean the array, then 
-            // add the result of the calculation and the current operator
-            if (displayResult.match(/\d+/) != null) {
-                inputHistory.splice(0, 3);
-                inputHistory.push(displayResult);
+            if (inputHistory.slice(-1) == '=') {
+                inputHistory.pop(); // remove the '='
+                displayResult = calculate(inputHistory); 
+                inputHistory[0] = displayResult; // update the 1st operand
+                inputHistory.push('='); // add the '='
             } else {
+                inputHistory.push(Number(displayResult)); // push the current input
+                displayResult = calculate(inputHistory);
+                
+                if (isDigit(displayResult)) {
+                    // reconstruct the array
+                    inputHistory.splice(0, inputHistory.length - 2)
+                    inputHistory.unshift(displayResult);
+                    inputHistory.push('='); // add the '='
+                }
+            }
+        } 
+    } else {
+        if (inputHistory.length > 0) {
+            if (inputHistory.slice(-1) == '=') {
+                inputHistory.splice(0, inputHistory.length);
+            } else if (operationMode) {
+                inputHistory[inputHistory.length - 1] = operation;
                 return;
             }
         }
+
+        inputHistory.push(Number(displayResult));
         
-        inputHistory.push(operation);
+        if (inputHistory.length >= 3) {
+            displayResult = calculate(inputHistory);
+        }
 
-        // Set the state to not operable, so the user can't
-        // add two operation consecutively
-        canOperate = false;
-    } else {
-        // User invokes an operation after an operation,
-        // just substitute the last operation with the current one.
-        inputHistory.pop();
-        inputHistory.push(operation);
+        if (isDigit(displayResult)) {
+            inputHistory.push(operation);
+        }
+
+        operationMode = true;
     }
-
 }
 
 // The place where the calculation is done
 function calculate(input) {
-    let output = '';
-
-    // Immediately check if we have division by zero
-    if (input.splice(1) === ['/', '0']){
-        output = 'Not a number';
-    } else {
-        let a = inputHistory[0];
-        let operation = inputHistory[1];
-        let b = inputHistory[2];
-        
-        switch(operation) {
-            case '/':
-                if (a / b < Number.MIN_SAFE_INTEGER || a / b > Number.MAX_SAFE_INTEGER) {
-                    output = 'Sorry, your number is out boundaries :(';
-                } else {
-                    output = a / b;
+    let result = input[0];
+    for (let i = 1; i < input.length - 1; i += 2) {
+        if (i > 1) {
+            if (input[i] == '*' || input[i] == '/') {
+                if (input[i - 2] == '+') {
+                    result -= input[i - 1];
+                } else if (input[i - 2] == '-') {
+                    result += input[i - 1];
                 }
+            }
+        }
+
+        result = evaluate(result, input[i], input[i + 1]);
+
+        if (!isDigit(result)) {
+            break;
+        }
+    }
+
+    return result;
+}
+
+// Sub-component of the function above.
+// The main purpose is to make the actual calculation.
+function evaluate(a, op, b) {
+    let output;
+    
+    if (op == '/' && b == 0) {
+        output = NaN;
+    } else {
+        let res;
+        switch (op) {
+            case '/':
+                res = String(a / b);
                 break;
             case '*':
-                if (a * b < Number.MIN_SAFE_INTEGER || a / b * Number.MAX_SAFE_INTEGER) {
-                    output = 'Sorry, your number is out boundaries :(';
-                } else {
-                    output = a * b;
-                }
+                res = String(a * b);
                 break;
             case '+':
-                if (a + b < Number.MIN_SAFE_INTEGER || a + b > Number.MAX_SAFE_INTEGER) {
-                    output = 'Sorry, your number is out boundaries :(';
-                } else {
-                    output = a + b;
-                }
+                res = String(a + b);
                 break;
             case '-':
-                if (a - b < Number.MIN_SAFE_INTEGER || a - b > Number.MAX_SAFE_INTEGER) {
-                    output = 'Sorry, your number is out boundaries :(';
-                } else {
-                    output = a - b;
-                }
+                res = String(a - b);
                 break;
         }
 
+        if (res < Number.MIN_SAFE_INTEGER || res > Number.MAX_SAFE_INTEGER) {
+            output = 'Sorry, your number is out of boundaries :(';
+        } else {
+            output = res;
+        }
     }
 
-    return output;
+    return Number(output);
 }
 
 // Helper which updates the display
 function updateDisplay() {
-    
-    /*
-    // Check for the length of the result displayed
-    // in order to dynamically fit the content
-
-    // Check if the max number of characters
-    // was reached, if yes reset the display and ...
-    if (displayResult.length === 50) {
-        displayResult = '0';
-    } 
-
-    // Check if we need to reset the standdart font size
-    // when the number of characters is less than 16 again
-    if (displayResult.length <= 16 && displayFontSize < 2) {
-        displayFontSize = 2;
-        displayContainer.style.fontSize = displayFontSize + 'rem';
-    } 
-
-    // Check if the content fits on the display
-    // if not adjust the font size and check again
-    while (displayContainer.clientWidth > (controlElements['screen'].clientWidth * 0.9)) {
-        displayContainer.style.fontSize = displayFontSize + 'rem';
-        displayFontSize -= 0.01;
-    }
-
-    */
-
-    if (controlElements['C'].textContent === 'AC') {
-        controlElements['C'].textContent = 'C';
+    // Update the text content of the 'AC' button
+    if (displayResult.length == 1 && inputHistory.length == 0) {
+        controlElements['AC'].textContent = 'C';
+    } else if (displayResult == '0' && inputHistory.length == 0) {
+        controlElements['AC'].textContent = 'AC';
     }
 
     displayContainer.textContent = displayResult;
@@ -421,6 +377,7 @@ function setTheme(themeName) {
     }
 }
 
-
-
-
+// Helper to check if the string is digit
+function isDigit(targetStr) {
+    return targetStr.toString().match(regex) != null;
+}
