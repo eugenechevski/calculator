@@ -261,13 +261,28 @@ function operate(operation) {
                 inputHistory[0] = displayResult; // update the 1st operand
                 inputHistory.push('='); // add the '='
             } else {
-                inputHistory.push(Number(displayResult)); // push the current input
+                // push the current input
+                if (inputHistory.slice(-1)[0] instanceof Array) {
+                    inputHistory.slice(-1)[0].push(Number(displayResult));
+                } else {
+                    inputHistory.push(Number(displayResult)); 
+                }
+
                 displayResult = calculate(inputHistory);
                 
+                // Validate
                 if (isDigit(displayResult)) {
                     // reconstruct the array
-                    inputHistory.splice(0, inputHistory.length - 2)
-                    inputHistory.unshift(displayResult);
+                    if (inputHistory.slice(-1)[0] instanceof Array) {
+                        inputHistory.splice(0, inputHistory.length - 1)
+                        inputHistory.push(inputHistory[0].slice(-2, -1)[0]);
+                        inputHistory.push(inputHistory[0].slice(-1)[0]);
+                        inputHistory[0] = displayResult;
+                    } else {
+                        inputHistory.splice(0, inputHistory.length - 2)
+                        inputHistory.unshift(displayResult);
+                    }   
+
                     inputHistory.push('='); // add the '='
                 }
             }
@@ -277,43 +292,89 @@ function operate(operation) {
             if (inputHistory.slice(-1) == '=') {
                 inputHistory.splice(0, inputHistory.length);
             } else if (operationMode) {
-                inputHistory[inputHistory.length - 1] = operation;
+                if (inputHistory.slice(-1)[0] instanceof Array) {
+                    inputHistory.slice(-1)[0][inputHistory.slice(-1)[0].length - 1] = operation;
+                } else {
+                    inputHistory[inputHistory.length - 1] = operation;
+                }
                 return;
             }
         }
-
-        inputHistory.push(Number(displayResult));
         
-        if (inputHistory.length >= 3) {
-            displayResult = calculate(inputHistory);
+
+        // The first priority operators 
+        if (operation == '*' || operation == '/') {
+            // Check if it's the first operation in the subarray
+            if (inputHistory.length > 0 && !(inputHistory.slice(-1)[0] instanceof Array)) {
+                inputHistory.push(new Array());
+            } 
+            
+            // Check if we're dealing with the subarray or not
+            if (inputHistory.slice(-1)[0] instanceof Array) {
+                // Push the result
+                inputHistory.slice(-1)[0].push(Number(displayResult));
+
+                // Check if we can calculate
+                if (inputHistory.slice(-1)[0].length >= 3) {
+                    displayResult = calculate(inputHistory.slice(-1)[0]);
+    
+                }
+
+                // Validate the result and add the current operator
+                if (isDigit(displayResult)) {
+                    inputHistory.slice(-1)[0].push(operation);
+                }
+            // If this type of operator is the first, then we can just add
+            // everything to the array itself
+            } else {
+                inputHistory.push(Number(displayResult));
+                displayResult = calculate(inputHistory);
+
+                if (isDigit(displayResult)) {
+                    inputHistory.push(operation);
+                }
+            }
+        // The second priority operators
+        } else {            
+            // Check if the current input belongs to the part of the 
+            // calculation with the higher priority or not
+            if (inputHistory.slice(-1)[0] instanceof Array) {
+                inputHistory.slice(-1)[0].push(Number(displayResult));
+            } else {
+                inputHistory.push(Number(displayResult));
+            }
+
+            // Check if we can calculate
+            if (inputHistory.length >= 3 || inputHistory[0].length >= 3) {
+                displayResult = calculate(inputHistory);
+            }
+
+            // Validate the result and add the current operator
+            if (isDigit(displayResult)) {
+                inputHistory.push(operation);
+            }
         }
 
-        if (isDigit(displayResult)) {
-            inputHistory.push(operation);
-        }
-
+        // Reset the calculation state
         operationMode = true;
     }
 }
 
-// The place where the calculation is done
+// The top-level function to iterate through the input and do a calculation
 function calculate(input) {
     let result = input[0];
+
     for (let i = 1; i < input.length - 1; i += 2) {
-        if (i > 1) {
-            if (input[i] == '*' || input[i] == '/') {
-                if (input[i - 2] == '+') {
-                    result -= input[i - 1];
-                } else if (input[i - 2] == '-') {
-                    result += input[i - 1];
-                }
+        if (input[i + 1] instanceof Array) {
+            let subResult = calculate(input[i + 1]);
+            
+            if (input[i] == '+') {
+                result += subResult;
+            } else {
+                result -= subResult;
             }
-        }
-
-        result = evaluate(result, input[i], input[i + 1]);
-
-        if (!isDigit(result)) {
-            break;
+        } else {
+            result = evaluate(result, input[i], input[i + 1]);
         }
     }
 
@@ -321,7 +382,7 @@ function calculate(input) {
 }
 
 // Sub-component of the function above.
-// The main purpose is to make the actual calculation.
+// The main purpose is to do the actual calculation.
 function evaluate(a, op, b) {
     let output;
     
