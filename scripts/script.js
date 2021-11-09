@@ -334,6 +334,7 @@ function handleArithmetic(operation) {
             }
                 
             inputHistory.push('=');
+            operationMode = true;
         }  
         
     } else {
