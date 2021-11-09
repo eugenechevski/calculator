@@ -1,11 +1,19 @@
-// Grab the elements
+/**
+ * The DOM-element is used to display a result of calculations or of an input.
+ */
+const elDisplayContainer = document.getElementById('result-display');
+/**
+ * The DOM-element is a container for the control-elements.
+ */
+const elControlsContainer = document.getElementById('controls');
+/**
+ * The collection of DOM-elements for the theme switches.
+ */
+const elThemes = document.getElementsByClassName('theme-switch');
 
-const displayContainer = document.getElementById('result-display');
-const controlsContainer = document.getElementById('controls');
-const themeSwitches = document.getElementsByClassName('theme-switch');
-
-// Variables and constants
-
+/**
+ * The matrix is used to fill-out the text-content of the control-elements.
+ */
 const controlsContent = [
     ['AC', '+/-', '%', '/'],
     ['7', '8', '9', '*'],
@@ -14,44 +22,70 @@ const controlsContent = [
     ['0', '.', '='],
 ]
 
+/**
+ * An object-container which stores the references to the constructed
+ * control-elements.
+ */
 var controlElements = {
     'screen':  document.getElementById('screen'),
 };
 
-var displayResult = '0';
+/**
+ * The variable is used as a storage of previous calculations or 
+ * as a display of an input.
+ */
+var displayResult = '0'; 
+
+/**
+ * The variable stores the name of the last pressed arithmetic operator, which is used only
+ * to add or remove the class 'active' on that operator.
+ */
+var lastOperator = '';
+
+/**
+ * The flag which indicates if the last control pressed was a digit or an
+ * arithmetic operator. In the case when it's true we need to replace the last operator
+ * with the current one.
+ */
 var operationMode = false;
+
+/**
+ * A storage of digits and operators, which are used for calculations.
+ */
 var inputHistory = [];
 
-let regex = /\d+\.?\d*/g;
+/**
+ * A regex-pattern which is used to change a theme-element's class name.
+ */
+let patternTheme = /theme-\d+/;
 
-// Draw the calculator
+/**
+ * A regex-pattern which is used to validate a calculated result.
+ */
+let patternDigit = /\d+\.?\d*/;
+
+/**
+ * A regex-pattern which is used to check if the decimal part has repeating pattern.
+ */
+let patternRepeat = /\d+\.(\d){1,2}\1+$/ ; 
+
+
+/**
+ * The loop constructs control-elements, and adds them to the controls-container.
+ */
 for (let i = 0; i < controlsContent.length; i++) {
     for (let j = 0; j < controlsContent[i].length; j++) {
-        // Construct the element
-        // Things to include:
-        // 1. class attribute value
-        // 2. event listener
-        // 3. group id
         let control = document.createElement('button');
         let controlType = '';
         let controlName = controlsContent[i][j];
-        
-        // Construct the class
+
         let classValue = '';
 
-        // Determine what type of control it is
-        // and add a corresponding class, so we can
-        // select by that class in CSS
-        if (j === controlsContent[i].length - 1) {
-            // Only if it's the last iteration 
-            // of the inner loop
+        if (j == controlsContent[i].length - 1) {
             classValue = 'operator';
         } else {
-            // The first 3 will always have the 'digits' class
-            // except when it's the first iteration and
-            // in that case, it's the 'operators-1' class
-            if (i === 0) {
-                classValue = 'modificator';
+            if (i == 0) {
+                classValue = 'modifier';
             } else {
                 classValue  = 'digit';
             }
@@ -61,8 +95,7 @@ for (let i = 0; i < controlsContent.length; i++) {
 
         classValue += ' btn '
         
-        // Determine what type of column it is
-        if (controlName === '0') {
+        if (controlName == '0') {
             classValue += 'col-6';
         } else {
             classValue += 'col'
@@ -70,132 +103,154 @@ for (let i = 0; i < controlsContent.length; i++) {
 
         classValue += ' '
 
-        // Add the theme
         classValue += 'theme-1';
 
-        // Set the class value
         control.className = classValue;
-
-        // Set the text content
         control.textContent = controlName;
 
-        // Add the event listener
         control.addEventListener('click', () => {
-            // Forward the handling of the input to the handler
             handleInput(controlType, controlName);
         });
 
-        // Store the element for further use
         controlElements[control.textContent] = control;
-
-        // Append the element to the container
-        controlsContainer.appendChild(control);
+        elControlsContainer.appendChild(control);
     }
 }
 
-// Add the keyboard-event listener
+/**
+ * The lines below are adding keyboard-support for the controls.
+ */
 
-let altIsPressed = false;
+let altIsPressed = false; // used to detect the shortcut "alt/option + '-'"
 document.body.addEventListener('keydown', (e) => {
-    let keyValue = e.key.toUpperCase();
+    let keyValue = e.key.toUpperCase(); // grab the key
 
-    // Check for the key modifiers being pressed
-
-    if (keyValue === 'ALT') {
+    /**
+     * Check for the key modifiers being pressed
+     * If it's 'SHIFT' we don't need to handle it,
+     * if it's 'ALT' we just set our flag variable to 'true'.
+     */
+    if (keyValue == 'ALT') {
         altIsPressed = true;
         return;
     }
 
-    if (keyValue === 'SHIFT') {
+    if (keyValue == 'SHIFT') {
         return;
     }
 
-    // Check for the controls which have two keys
-    // which can invoke the control
-
-    if (keyValue === 'ENTER') {
+    
+    /**
+     * Handle the special keys which can be used as the secondary key for a control
+     */
+    if (keyValue == 'ENTER') {
         keyValue = '=';
-    } else if (keyValue === 'ESCAPE' || keyValue === 'C') {
-        // User wants to undo the current operation
-        if (operationMode) {
+    } else if (keyValue == 'ESCAPE' || keyValue == 'C') {
+        if (keyValue == 'ESCAPE' && operationMode) { // User wants to undo the current operation
+            // remove the focus from the current operator
+            // ...
             operationMode = false;
             return;
-        } 
-        // User wants to clear the display
-        keyValue = 'AC';
-    // A hidden control which doesn't have an associated button
-    // and has to be invoked manually
-    } else if (keyValue === 'BACKSPACE') {
+        } else { // User wants to clear the display
+            keyValue = 'AC';
+        }
+    /**
+     * A hidden control which doesn't have an associated button
+     * and has to be invoked manually.
+     */
+    } else if (keyValue == 'BACKSPACE') {
         keyValue = 'Remove';
-        handleInput('modificator', keyValue);
+        handleInput('modifier', keyValue);
     }
 
-    // Check for the special control '+/-, which can be triggered only with 
-    // the shortcut 'Alt(Windows) or Option(Mac)' key pressed and the '-' key.
-    if (altIsPressed && keyValue === '–') {
+    /**
+     * Check for the special control '+/-, which can be triggered only with 
+     * the shortcut 'Alt(Windows) or Option(Mac)' key pressed and the '-' key.
+     */
+    if (altIsPressed && keyValue == '–') {
         keyValue = '+/-';
     }
     
-    // Check if the key is associated with any of the controls
-    if (Object.keys(controlElements).includes(keyValue)) {
-        controlElements[keyValue].focus();
-        controlElements[keyValue].click();
+    if (Object.keys(controlElements).includes(keyValue)) { // Validate the key
+        controlElements[keyValue].click(); 
     }
 });
 
-// Add the key-event listener to reset the state of the flag 
-// when the key-modifier 'Alt(Windows) or Option(Mac)' is being released
+/**
+ * The key-event listener to reset the state of the flag 
+ * when the key-modifier 'Alt(Windows) or Option(Mac)' is being released.
+ */
 document.body.addEventListener('keyup', (e) => {
-    if (e.key.toUpperCase() === 'ALT') {
+    if (e.key.toUpperCase() == 'ALT') {
         altIsPressed = false;
     }
 });
 
-// Add the event listener for the theme switches
-for (let i = 0; i < themeSwitches.length; i++) {
-    themeSwitches[i].addEventListener('click', () => {
-        setTheme(themeSwitches[i].id);
+/**
+ * The event listener for the theme switches
+ */
+for (let i = 0; i < elThemes.length; i++) {
+    elThemes[i].addEventListener('click', () => {
+        setTheme(elThemes[i].id);
     });
 }
 
-// Handles a click event of any control
-function handleInput(controlTypeName, controlName) {
-     // Check the input type
-
-     if (controlTypeName == 'digit') {
-        operand(controlName);
-    } else if (controlTypeName == 'modificator') {
-        modify(controlName);
-    } else if (controlTypeName == 'operator') {
-        operate(controlName);
-    } else {
-        // Error
+/**
+ * Helper for setting a theme, which iterates over the control elements
+ * and replaces a theme substring of a class name with a new theme substring.
+ */
+function setTheme(themeName) {
+    for (key in controlElements) {
+        let control = controlElements[key];
+        let newClass = control.className.replace(patternTheme, themeName);
+        control.className = newClass;
     }
-
-    updateDisplay();
 }
 
-// Helper to read the input from 'digit' controls
-function operand(inputValue) {
-    // Reset the variables for the new input
-    if (operationMode || !isDigit(displayResult)) {
+
+/**
+ * The main control center, which receives an input and redirects it to an appropriate handler
+ * The mechanics is simple: 
+ *       user presses one of the controls -> 
+ *       event being fired on the corresponding control -> 
+ *       the data of the control is passed to the handler below ->  
+ *       the control input value is then being passed to an appropriate sub-handler -> 
+ *       the input is being handled -> 
+ *       the state of the script is updated ->
+ *       the display is updated
+ */
+function handleInput(controlTypeName, controlName) {
+     if (controlTypeName == 'digit') {
+        handleDigit(controlName);
+    } else if (controlTypeName == 'modifier') {
+        handleModifier(controlName);
+    } else if (controlTypeName == 'operator') {
+        handleArithmetic(controlName);
+    }
+
+    updateDisplay(controlName);
+}
+
+/**
+ * The sub-handler which handles all the digit inputs 0, 1, 3, 4, 5, 6, 7, 8, 9 and '.'.
+ * It receives an input in form of a digit and then adds it to a variable which stores
+ * a result being display.
+ */
+function handleDigit(inputValue) {
+    if (operationMode || !isDigit(displayResult)) { // Reset the variables for the new input
         displayResult = '0';
         operationMode = false;
     }
 
-    // Check for attempting to input more than one '.' in a row
-    // Also check for attempting to input more than one leading zero
-    if (inputValue == '.' && displayResult.slice(-1) == '.' ||
+    if (inputValue == '.' && displayResult.slice(-1) == '.' || // Validate the input
         inputValue == '0' && displayResult == '0') {
             return;
     } else {
-        // Check if the input is the first digit
         if (displayResult == '0' && inputValue != '.') {
             displayResult = '';
         }
 
-        // Append the input to the result
-        displayResult += inputValue;
+        displayResult += inputValue; // Append the input
 
         if (displayResult >= Number.MAX_SAFE_INTEGER) {
             displayResult = 'Sorry, your number is out of boundaries :(';
@@ -203,39 +258,31 @@ function operand(inputValue) {
     }
 }
 
-// Helper to modify the result
-function modify(operation) {
-    // Check if can modify the result if the result is '0', 
-    // then we don't have to perform any modifications
-    // or we're trying to modify non-digit string
-    if (displayResult == '0' || (!isDigit(displayResult) && operation != 'AC')) {
+/**
+ * The sub-handler for modifying the current input.
+ * It receives an operation-modifier like 'C', '+/-', '%' or 'Remove', 
+ */
+function handleModifier(operation) {
+    if (operation != 'AC' && (displayResult == '0' || !isDigit(displayResult))){
         return;
     }
 
     switch (operation) {
-        // Remove the last number
         case 'Remove':
-            // Can remove no more characters
             if (displayResult.length == 1) {
                 displayResult = '0';
             } else {
                 displayResult = displayResult.slice(0, -1);
             }
-
             break;
-        // Reset the display and
         case 'AC':
-            // clear everything
             displayResult = '0';
             inputHistory.splice(0, inputHistory.length);
             break;
-        // Reflect the display by multiplying by -1
         case '+/-':
             displayResult *= -1;
             break;
-        // Convert to percentages by dividing by 100
         case '%':
-            // First check if the division doesn't cause to exceed the limit 
             if (displayResult / 100 <= 1 * (10 ** (-95))) {
                 displayResult = NaN;
             } else {
@@ -245,8 +292,14 @@ function modify(operation) {
     }
 }
 
-// Handle an arithmetic operation('/', '*', '+', '-', '=')
-function operate(operation) {
+/**
+ * The sub-handler which handles the arithmetic operations like +, -, *, / and =.
+ * When being called the handler determines the operation:
+ * There are two conditions when determining the operation:
+ *      1. If the operator is '=', the special operator which requires a special handling; 
+ *      2. If the operator is '*', '/', '+', or '-'.
+ */
+function handleArithmetic(operation) {
     if (!isDigit(displayResult)) {
         return;
     }
@@ -254,39 +307,35 @@ function operate(operation) {
     if (operation == '=') {
         if (inputHistory.length == 0) { 
             return; 
+        } else if (inputHistory.slice(-1) == '=') {
+            inputHistory.pop();
+            displayResult = helpCalculate(inputHistory);
+            inputHistory[0] = displayResult;
+            inputHistory.push('=');
         } else {
-            if (inputHistory.slice(-1) == '=') {
-                inputHistory.pop(); // remove the '='
-                displayResult = calculate(inputHistory); 
-                inputHistory[0] = displayResult; // update the 1st operand
-                inputHistory.push('='); // add the '='
+            if (inputHistory.slice(-1)[0] instanceof Array) {
+                inputHistory.slice(-1)[0].push(Number(displayResult));
             } else {
-                // push the current input
-                if (inputHistory.slice(-1)[0] instanceof Array) {
-                    inputHistory.slice(-1)[0].push(Number(displayResult));
-                } else {
-                    inputHistory.push(Number(displayResult)); 
-                }
-
-                displayResult = calculate(inputHistory);
-                
-                // Validate
-                if (isDigit(displayResult)) {
-                    // reconstruct the array
-                    if (inputHistory.slice(-1)[0] instanceof Array) {
-                        inputHistory.splice(0, inputHistory.length - 1)
-                        inputHistory.push(inputHistory[0].slice(-2, -1)[0]);
-                        inputHistory.push(inputHistory[0].slice(-1)[0]);
-                        inputHistory[0] = displayResult;
-                    } else {
-                        inputHistory.splice(0, inputHistory.length - 2)
-                        inputHistory.unshift(displayResult);
-                    }   
-
-                    inputHistory.push('='); // add the '='
-                }
+                inputHistory.push(Number(displayResult)); 
             }
-        } 
+
+            displayResult = helpCalculate(inputHistory);
+            
+            if (isDigit(displayResult)) {
+                if (inputHistory.slice(-1)[0] instanceof Array) {
+                    inputHistory.splice(0, inputHistory.length - 1);
+                    inputHistory.push(inputHistory[0].slice(-2, -1)[0]);
+                    inputHistory.push(inputHistory[0].slice(-1)[0]);
+                    inputHistory[0] = displayResult;
+                } else {
+                    inputHistory.splice(0, inputHistory.length - 2)
+                    inputHistory.unshift(displayResult);
+                }   
+            }
+                
+            inputHistory.push('=');
+        }  
+        
     } else {
         if (inputHistory.length > 0) {
             if (inputHistory.slice(-1) == '=') {
@@ -295,78 +344,69 @@ function operate(operation) {
                 if (inputHistory.slice(-1)[0] instanceof Array) {
                     inputHistory.slice(-1)[0][inputHistory.slice(-1)[0].length - 1] = operation;
                 } else {
+                    if (operation == '/' || operation == '*') {
+                        inputHistory.splice(0, inputHistory.length - 1); 
+                        inputHistory.unshift(displayResult);
+                    }
                     inputHistory[inputHistory.length - 1] = operation;
                 }
                 return;
             }
         }
-        
 
-        // The first priority operators 
         if (operation == '*' || operation == '/') {
-            // Check if it's the first operation in the subarray
             if (inputHistory.length > 0 && !(inputHistory.slice(-1)[0] instanceof Array)) {
                 inputHistory.push(new Array());
             } 
             
-            // Check if we're dealing with the subarray or not
             if (inputHistory.slice(-1)[0] instanceof Array) {
-                // Push the result
                 inputHistory.slice(-1)[0].push(Number(displayResult));
 
-                // Check if we can calculate
                 if (inputHistory.slice(-1)[0].length >= 3) {
-                    displayResult = calculate(inputHistory.slice(-1)[0]);
+                    displayResult = helpCalculate(inputHistory.slice(-1)[0]); 
     
                 }
 
-                // Validate the result and add the current operator
                 if (isDigit(displayResult)) {
                     inputHistory.slice(-1)[0].push(operation);
                 }
-            // If this type of operator is the first, then we can just add
-            // everything to the array itself
             } else {
                 inputHistory.push(Number(displayResult));
-                displayResult = calculate(inputHistory);
+                displayResult = helpCalculate(inputHistory);
 
                 if (isDigit(displayResult)) {
                     inputHistory.push(operation);
                 }
             }
-        // The second priority operators
         } else {            
-            // Check if the current input belongs to the part of the 
-            // calculation with the higher priority or not
             if (inputHistory.slice(-1)[0] instanceof Array) {
                 inputHistory.slice(-1)[0].push(Number(displayResult));
             } else {
                 inputHistory.push(Number(displayResult));
             }
 
-            // Check if we can calculate
             if (inputHistory.length >= 3 || inputHistory[0].length >= 3) {
-                displayResult = calculate(inputHistory);
+                displayResult = helpCalculate(inputHistory);
             }
 
-            // Validate the result and add the current operator
             if (isDigit(displayResult)) {
                 inputHistory.push(operation);
             }
         }
 
-        // Reset the calculation state
         operationMode = true;
     }
 }
 
-// The top-level function to iterate through the input and do a calculation
-function calculate(input) {
+/**
+ * The helper iterates through an input-array and evaluates the result.
+ */
+function helpCalculate(input) {
     let result = input[0];
 
     for (let i = 1; i < input.length - 1; i += 2) {
         if (input[i + 1] instanceof Array) {
-            let subResult = calculate(input[i + 1]);
+            let subResult = helpCalculate(input[i + 1]);
             
             if (input[i] == '+') {
                 result += subResult;
@@ -374,16 +414,18 @@ function calculate(input) {
                 result -= subResult;
             }
         } else {
-            result = evaluate(result, input[i], input[i + 1]);
+            result = helpEvaluate(result, input[i], input[i + 1]);
         }
     }
 
     return result;
+    
 }
 
-// Sub-component of the function above.
-// The main purpose is to do the actual calculation.
-function evaluate(a, op, b) {
+/**
+ * The helper evaluates an expression of the form 'a (operator) b' and validates the result.
+ */
+function helpEvaluate(a, op, b) {
     let output;
     
     if (op == '/' && b == 0) {
@@ -415,30 +457,55 @@ function evaluate(a, op, b) {
     return Number(output);
 }
 
-// Helper which updates the display
-function updateDisplay() {
-    // Update the text content of the 'AC' button
-    if (displayResult.length == 1 && inputHistory.length == 0) {
-        controlElements['AC'].textContent = 'C';
-    } else if (displayResult == '0' && inputHistory.length == 0) {
+/**
+ * The specific-purpose function which updates content of the DOM-elements.
+ */
+function updateDisplay(currentInput) {
+    if (displayResult == '0' && inputHistory.length == 0) {
         controlElements['AC'].textContent = 'AC';
+    } else {
+        controlElements['AC'].textContent = 'C';
     }
 
-    displayContainer.textContent = displayResult;
-}
-
-// Helper for setting a theme
-function setTheme(themeName) {
-    for (key in controlElements) {
-        let control = controlElements[key];
-        // Replace the current theme with the new one
-        let pattern = /theme-\d+/;
-        let newClass = control.className.replace(pattern, themeName);
-        control.className = newClass;
+    if (lastOperator != '') {
+        controlElements[lastOperator].classList.remove('active');
     }
+
+    if (operationMode) {
+        if (currentInput == '/' || currentInput == '*' || 
+            currentInput == '+' || currentInput == '-' || currentInput == '=') {
+
+            controlElements[currentInput].classList.add('active');
+            lastOperator = currentInput;
+        } else {
+            lastOperator = '';
+        }
+    }
+
+    if (isDigit(displayResult)) {
+        if (!Number.isInteger(Number(displayResult))) {
+            if (isRepeating(displayResult)) {
+                displayResult = Number(displayResult).toFixed(2).toString();
+            } else if (displayResult.length > 16) {
+                let decimalLength = 16 - displayResult.slice(0, displayResult.indexOf('.')).length - 1;
+                displayResult = Number(displayResult).toFixed(decimalLength).toString();
+            }
+        }
+    }
+
+    elDisplayContainer.textContent = displayResult;
 }
 
-// Helper to check if the string is digit
+/**
+ * Validates if the given string is digit.
+ */
 function isDigit(targetStr) {
-    return targetStr.toString().match(regex) != null;
+    return targetStr.toString().match(patternDigit) != null;
+}
+
+/**
+ * Checks if the decimal part has repeating pattern
+ */
+function isRepeating(targetStr) {
+    return targetStr.toString().match(patternRepeat) != null;
 }

@@ -40,6 +40,10 @@
   border-bottom: 1px solid black;
 }
 
+#controls button.active {
+  border: 2px solid black;
+}
+
 #controls button:nth-child(4n + 1) {
   border-left: 1px solid black;
 }
@@ -59,7 +63,7 @@
   color: #FFFFFF;
 }
 
-.modificator.theme-1, #theme-1 div:nth-child(2) {
+.modifier.theme-1, #theme-1 div:nth-child(2) {
   background-color: #4E4E4E;
 }
 
@@ -77,7 +81,7 @@
   color: #FFFFFF;
 }
 
-.modificator.theme-2, #theme-2 div:nth-child(2) {
+.modifier.theme-2, #theme-2 div:nth-child(2) {
   background-color: #3A2B36;
   color: #FFFFFF;
 }
@@ -100,7 +104,7 @@
   color: #000000;
 }
 
-.modificator.theme-3, #theme-3 div:nth-child(2) {
+.modifier.theme-3, #theme-3 div:nth-child(2) {
   background-color: #D9043D;
 }
 
@@ -112,7 +116,7 @@
   background-color: #A63352;
 }
 
-/* Theme swithces styling  */
+/* Theme switches styling  */
 #theme-palette {
   height: 10vh;
   width: 60vh;
